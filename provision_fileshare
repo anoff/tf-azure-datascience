@@ -11,7 +11,7 @@ RESOURCE_GROUP="$1"
 STORAGE_ACCOUNT="$2"
 FILESHARE_NAME="$3"
 
-CONN_STRING="$(az storage account show-connection-string -n rcsdsblablup -g rcs-datascience --query 'connectionString' -o tsv)"
+CONN_STRING="$(az storage account show-connection-string -n $STORAGE_ACCOUNT -g $RESOURCE_GROUP --query 'connectionString' -o tsv)"
 
 az storage share create --name $FILESHARE_NAME --connection-string "$CONN_STRING" > /dev/null
 
