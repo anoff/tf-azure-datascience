@@ -1,5 +1,5 @@
 resource "azurerm_storage_account" "ds" {
-  name                     = "rcsdsblablup"
+  name                     = "rcsdsacc"
   resource_group_name      = "${azurerm_resource_group.ds.name}"
   location                 = "${var.location}"
   account_tier             = "Standard"
