@@ -1,19 +1,82 @@
-module "ds-vm" {
-  source = "HopeUA/vm/azurerm"
+variable "vm-name" {
+  default = "user1"
+}
 
-  namespace = "ds-lelli"
-  name = "vm-lelli"
-  location = "${var.location}"
-  vm_size = "Basic_A2"
-  os {
-	  offer = "linux-data-science-vm-ubuntu"
-	  publisher = "microsoft-ads"
-	  sku = "linuxdsvmubuntu"
-	  version = "latest"
-	}
+resource "azurerm_virtual_network" "ds" {
+  name                = "ds-network"
+  address_space       = ["10.0.0.0/16"]
+  location            = "${var.location}"
+  resource_group_name = "${azurerm_resource_group.ds.name}"
+}
 
-	admin {
-		name = "terraform"
-		public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDxZ8sLmRI4bgCVo7Oon8FQrmNjCeJrcv8q6gj0xs6E0xBFEHHvtuV7IuHUyzh+0vZr0ySeaZHRMR+TG37MuoZgxAeXTscETAlcckCPxv8k/jvRjxre7Cg3Pu0613srbTRnzU7wNP1PnhAR3/aQ97WLjj4EsX4uQ0Kkv4aFqhWyrKQo3wr3NkXTs8AtFiTWtRFc+c2RWd/1GIg33pcdXCBPmqeUi4Xh+A6hQLlyjTSH9QUuu9Vc/5kyMfIsMPyOPFrCczlmNe5lme/FmUIXJgU+DoTlqb4TxCb3M8tXPdoVzGKKRfqTTzeJTaM5TNS+4USFJjinCNhco8gw+dbgM74wQfniLEqYcGP+rnFVYwrr8pdRCkCbdQD5ahWubjHPdJ5Fmr1l6w35KaGc26cEaAhfu2ggf6L1zn99Zazt9ashy5nHEQxpCEHjqvHglMv0R+WIs4zcEj1K7Qemb8NLtAp0x0ik1dJgfg8zYyF2P6cM5EVgDULwyUTOb7KQzFVNeSbGlT/S8vVioMPSZd74U7D2tWUvPQfCDF5FJ4un2oI1/NzCbnpu+sHnnZaSz6t4rlMgh4E45qzb4foJ2bIcpiAwgMux+yK4AE56QRHQc2kO4f4eAzwAH71XwvXzkbrHl2w6vHy7SIQtd29dFBBLBni2d9jLUQB1HNl5tJ0xEk077w== andreas@Andreass-MBP.fritz.box"
-	}
+resource "azurerm_subnet" "ds" {
+  name                 = "ds-subnet"
+  resource_group_name  = "${azurerm_resource_group.ds.name}"
+  virtual_network_name = "${azurerm_virtual_network.ds.name}"
+  address_prefix       = "10.0.2.0/24"
+}
+
+resource "azurerm_network_interface" "ds" {
+  name                = "ds-ni"
+  location            = "${var.location}"
+  resource_group_name = "${azurerm_resource_group.ds.name}"
+
+  ip_configuration {
+    name                          = "dsconfiguration1"
+    subnet_id                     = "${azurerm_subnet.ds.id}"
+    private_ip_address_allocation = "dynamic"
+  }
+}
+
+resource "azurerm_virtual_machine" "ds" {
+  name                  = "${var.vm-name}-vm"
+  location              = "${var.location}"
+  resource_group_name   = "${azurerm_resource_group.ds.name}"
+  network_interface_ids = ["${azurerm_network_interface.ds.id}"]
+  vm_size               = "Standard_DS1_v2"
+  delete_os_disk_on_termination = true
+  delete_data_disks_on_termination = true
+
+  plan {
+    name = "linuxdsvmubuntu"
+    publisher = "microsoft-ads"
+    product = "linux-data-science-vm-ubuntu"
+  }
+
+  storage_image_reference {
+    publisher = "microsoft-ads"
+    offer     = "linux-data-science-vm-ubuntu"
+    sku       = "linuxdsvmubuntu"
+    version   = "latest"
+  }
+
+  storage_os_disk {
+    name              = "${var.vm-name}-osdisk"
+    caching           = "ReadWrite"
+    create_option     = "FromImage"
+    managed_disk_type = "Standard_LRS"
+  }
+
+  # Optional data disks
+  storage_data_disk {
+    name              = "${var.vm-name}-data"
+    managed_disk_type = "Standard_LRS"
+    create_option     = "FromImage"
+    lun               = 0
+    disk_size_gb      = "120"
+  }
+
+  os_profile {
+    computer_name  = "hostname"
+    admin_username = "dsadmin"
+    admin_password = "Password1234!"
+  }
+
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }
+
+  tags {
+    environment = "datascience-vm, ${var.vm-name}"
+  }
 }
