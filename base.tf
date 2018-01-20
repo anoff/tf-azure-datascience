@@ -3,6 +3,6 @@ variable "location" {
 }
 
 resource "azurerm_resource_group" "ds" {
-  name     = "rcs-datascience"
+  name     = "tf-datascience"
   location = "${var.location}"
 }
