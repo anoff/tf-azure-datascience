@@ -4,5 +4,6 @@ variable "location" {
 
 resource "azurerm_resource_group" "ds" {
   name     = "tf-datascience"
-  location = "${var.location}"
+  location = var.location
 }
+
